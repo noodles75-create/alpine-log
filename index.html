@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="description" content="AlpineLog - Diario digitale per alpinisti. Documenta le tue avventure in montagna." />
+  <title>AlpineLog - Diario Digitale per Alpinisti</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232563eb'><path d='M12 2L4 12h3v8h10v-8h3L12 2z'/></svg>" />
+  
+  <!-- React & Babel -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide-react@0.263.1/dist/umd/lucide-react.js"></script>
+  
+  <style>
+    body { 
+      margin: 0; 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const { 
+      Calendar, Mountain, Camera, Users, Clock, Thermometer, Star, Plus, Search, Filter, 
+      Map, BarChart3, User, Settings, Menu, X, Upload, MapPin, AlertTriangle, FileText, 
+      Image, Download, Share, Mail, Link, Eye, EyeOff, LogIn, LogOut, Save, FolderOpen 
+    } = lucideReact;
+
+    const AlpineLog = () => {
+      const [currentView, setCurrentView] = useState('dashboard');
+      const [activities, setActivities] = useState([]);
+      const [showAddForm, setShowAddForm] = useState(false);
+      const [selectedActivity, setSelectedActivity] = useState(null);
+      const [user, setUser] = useState({ name: 'Marco Rossi', level: 'Esperto', totalAscents: 47 });
+      const [isAuthenticated, setIsAuthenticated] = useState(true);
+      const [showShareModal, setShowShareModal] = useState(false);
+      const [shareActivity, setShareActivity] = useState(null);
+      const [showExportModal, setShowExportModal] = useState(false);
+      const [showImportModal, setShowImportModal] = useState(false);
+
+      // Funzioni per Export/Import
+      const exportData = () => {
+        const data = {
+          user,
+          activities,
+          exportDate: new Date().toISOString(),
+          version: '1.0'
+        };
+        const dataStr = JSON.stringify(data, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `alpine-log-backup-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      };
+
+      const importData = (file) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = JSON.parse(e.target.result);
+            if (data.activities && Array.isArray(data.activities)) {
+              setActivities(data.activities);
+              if (data.user) setUser(data.user);
+              alert(`Importate ${data.activities.length} attività con successo!`);
+            } else {
+              alert('File non valido. Assicurati di importare un backup di AlpineLog.');
+            }
+          } catch (error) {
+            alert('Errore nella lettura del file. Controlla che sia un JSON valido.');
+          }
+        };
+        reader.readAsText(file);
+      };
+
+      // Funzione per generare link condivisibile
+      const generateShareLink = (activity) => {
+        const shareData = {
+          id: activity.id,
+          title: activity.title,
+          mountain: activity.mountain,
+          route: activity.route,
+          date: activity.date,
+          difficulty: activity.difficulty,
+          routeReport: activity.routeReport
+        };
+        const encodedData = btoa(JSON.stringify(shareData));
+        return `${window.location.origin}${window.location.pathname}?shared=${encodedData}`;
+      };
+
+      // Sample data
+      useEffect(() => {
+        // Controlla se c'è un'attività condivisa nell'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const sharedData = urlParams.get('shared');
+        
+        if (sharedData) {
+          try {
+            const decodedData = JSON.parse(atob(sharedData));
+            setSelectedActivity(decodedData);
+            setCurrentView('shared');
+          } catch (error) {
+            console.error('Errore nel decodificare l\'attività condivisa:', error);
+          }
+        }
+
+        setActivities([
+          {
+            id: 1,
+            title: 'Conquista del Monte Bianco - Via Normale',
+            date: '2025-06-28',
+            mountain: 'Monte Bianco',
+            route: 'Via Normale Italiana',
+            type: 'Alpinismo',
+            difficulty: 'PD',
+            elevation: '4809m',
+            duration: '12h 30m',
+            weather: 'Sereno',
+            companions: ['Giulia Bianchi', 'Luca Verdi'],
+            photos: 3,
+            rating: 5,
+            routeReport: 'Partenza dal rifugio Torino alle 4:30. Attraversamento del Plateau du Dôme senza difficoltà particolari. Salita per il Dôme du Goûter con qualche tratto ghiacciato. Dalla vetta del Dôme, percorso l\'Arête des Bosses prestando attenzione ai cornicioni. Passaggio chiave alla Junction (4362m) con qualche metro di misto roccia-ghiaccio. Salita finale per la cresta sommitale, neve compatta e buone condizioni. Discesa per la stessa via, attenzione ai seracchi del Grand Plateau nel pomeriggio.',
+            notes: 'Condizioni perfette, vista spettacolare dalla vetta.'
+          },
+          {
+            id: 2,
+            title: 'Tre Cime di Lavaredo - Un classico dolomitico',
+            date: '2025-06-25',
+            mountain: 'Dolomiti - Tre Cime',
+            route: 'Via Normale Cima Grande',
+            type: 'Arrampicata',
+            difficulty: 'IV+',
+            elevation: '2999m',
+            duration: '8h 15m',
+            weather: 'Variabile',
+            companions: ['Sara Neri'],
+            photos: 7,
+            rating: 4,
+            routeReport: 'Partenza dal rifugio Locatelli alle 6:00. Approccio per il sentiero 101 fino alla base della parete nord. Attacco della via sulla destra della cengia principale. Primi 3 tiri su roccia ottima, difficoltà sostenuta ma ben protetta. L4-L6: passaggi più impegnativi, roccia compatta con buoni appigli. L7: traverso delicato verso sinistra, protezioni distanziate. L8-L10: salita diretta per fessure e camini, qualche passaggio di V. Uscita sulla vetta per facili roccette. Discesa per la via normale del versante sud.',
+            notes: 'Roccia ottima, qualche passaggio impegnativo.'
+          }
+        ]);
+      }, []);
+
+      // Modal per condivisione
+      const ShareModal = () => {
+        const shareLink = shareActivity ? generateShareLink(shareActivity) : '';
+        
+        const copyToClipboard = (text) => {
+          navigator.clipboard.writeText(text).then(() => {
+            alert('Link copiato negli appunti!');
+          });
+        };
+
+        const shareViaEmail = () => {
+          const subject = encodeURIComponent(`Relazione: ${shareActivity.title}`);
+          const body = encodeURIComponent(`Ciao! Ho completato questa fantastica salita e volevo condividere con te la relazione dettagliata:
+
+${shareActivity.title}
+${shareActivity.mountain} - ${shareActivity.route}
+Data: ${shareActivity.date}
+Difficoltà: ${shareActivity.difficulty}
+
+${shareActivity.routeReport}
+
+Puoi vedere tutti i dettagli qui: ${shareLink}
+
+Buone scalate!`);
+          
+          window.location.href = `mailto:?subject=${subject}&body=${body}`;
+        };
+
+        return React.createElement('div', { className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" },
+          React.createElement('div', { className: "bg-white rounded-lg max-w-md w-full p-6" },
+            React.createElement('div', { className: "flex justify-between items-center mb-4" },
+              React.createElement('h2', { className: "text-xl font-bold text-gray-800" }, "Condividi Attività"),
+              React.createElement('button', { 
+                onClick: () => setShowShareModal(false), 
+                className: "text-gray-500 hover:text-gray-700" 
+              }, React.createElement(X, { size: 20 }))
+            ),
+            
+            React.createElement('div', { className: "space-y-4" },
+              React.createElement('div', {},
+                React.createElement('h3', { className: "font-semibold text-gray-700 mb-2" }, shareActivity?.title),
+                React.createElement('p', { className: "text-sm text-gray-600" }, `${shareActivity?.mountain} - ${shareActivity?.route}`)
+              ),
+              
+              React.createElement('div', {},
+                React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" }, "Link Condivisibile"),
+                React.createElement('div', { className: "flex space-x-2" },
+                  React.createElement('input', { 
+                    type: "text", 
+                    value: shareLink, 
+                    readOnly: true, 
+                    className: "flex-1 p-2 border border-gray-300 rounded-md bg-gray-50 text-sm"
+                  }),
+                  React.createElement('button', { 
+                    onClick: () => copyToClipboard(shareLink),
+                    className: "bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                  }, React.createElement(Link, { size: 16 }))
+                )
+              ),
+              
+              React.createElement('div', { className: "flex space-x-2" },
+                React.createElement('button', { 
+                  onClick: shareViaEmail,
+                  className: "flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+                },
+                  React.createElement(Mail, { size: 16 }),
+                  React.createElement('span', {}, "Email")
+                ),
+                React.createElement('button', { 
+                  onClick: () => {
+                    if (navigator.share && shareActivity) {
+                      navigator.share({
+                        title: shareActivity.title,
+                        text: `Guarda questa fantastica salita: ${shareActivity.mountain} - ${shareActivity.route}`,
+                        url: shareLink
+                      });
+                    } else {
+                      copyToClipboard(shareLink);
+                    }
+                  },
+                  className: "flex-1 bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2"
+                },
+                  React.createElement(Share, { size: 16 }),
+                  React.createElement('span', {}, "Condividi")
+                )
+              )
+            )
+          )
+        );
+      };
+
+      // Navigation Component
+      const Navigation = () => React.createElement('nav', { className: "bg-white shadow-md border-b" },
+        React.createElement('div', { className: "max-w-7xl mx-auto px-4" },
+          React.createElement('div', { className: "flex justify-between items-center h-16" },
+            React.createElement('div', { className: "flex items-center space-x-2" },
+              React.createElement(Mountain, { className: "text-blue-600", size: 32 }),
+              React.createElement('span', { className: "text-xl font-bold text-gray-800" }, "AlpineLog")
+            ),
+            
+            React.createElement('div', { className: "hidden md:flex space-x-8" },
+              React.createElement('button', { 
+                onClick: () => setCurrentView('dashboard'),
+                className: `flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+                  currentView === 'dashboard' ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:text-gray-800'
+                }`
+              },
+                React.createElement(BarChart3, { size: 18 }),
+                React.createElement('span', {}, "Dashboard")
+              ),
+              React.createElement('button', { 
+                onClick: () => setCurrentView('activities'),
+                className: `flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+                  currentView === 'activities' ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:text-gray-800'
+                }`
+              },
+                React.createElement(Mountain, { size: 18 }),
+                React.createElement('span', {}, "Attività")
+              )
+            ),
+
+            React.createElement('div', { className: "flex items-center space-x-2" },
+              React.createElement('button', { 
+                onClick: () => setShowAddForm(true),
+                className: "bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              },
+                React.createElement(Plus, { size: 18 }),
+                React.createElement('span', { className: "hidden sm:inline" }, "Nuova Attività")
+              ),
+              React.createElement('div', { className: "flex items-center space-x-2 px-3 py-2 bg-gray-100 rounded-md" },
+                React.createElement(User, { size: 16, className: "text-gray-600" }),
+                React.createElement('span', { className: "text-sm font-medium text-gray-700 hidden sm:inline" }, user.name)
+              )
+            )
+          )
+        )
+      );
+
+      // Dashboard Component
+      const Dashboard = () => React.createElement('div', { className: "space-y-6" },
+        React.createElement('div', { className: "bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-lg" },
+          React.createElement('h1', { className: "text-2xl font-bold mb-2" }, `Benvenuto, ${user.name}!`),
+          React.createElement('p', { className: "opacity-90" }, `Livello: ${user.level} • ${user.totalAscents} ascensioni totali`)
+        ),
+
+        React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-3 gap-4" },
+          React.createElement('div', { className: "bg-white p-4 rounded-lg shadow-md border-l-4 border-green-500" },
+            React.createElement('div', { className: "flex items-center justify-between" },
+              React.createElement('div', {},
+                React.createElement('p', { className: "text-gray-600 text-sm" }, "Attività Totali"),
+                React.createElement('p', { className: "text-2xl font-bold text-gray-800" }, activities.length)
+              ),
+              React.createElement(Mountain, { className: "text-green-500", size: 32 })
+            )
+          ),
+          React.createElement('div', { className: "bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-500" },
+            React.createElement('div', { className: "flex items-center justify-between" },
+              React.createElement('div', {},
+                React.createElement('p', { className: "text-gray-600 text-sm" }, "Quota Max"),
+                React.createElement('p', { className: "text-2xl font-bold text-gray-800" }, 
+                  activities.length > 0 ? 
+                    Math.max(...activities.map(a => parseInt(a.elevation) || 0)) + 'm' : 
+                    '0m'
+                )
+              ),
+              React.createElement(BarChart3, { className: "text-blue-500", size: 32 })
+            )
+          ),
+          React.createElement('div', { className: "bg-white p-4 rounded-lg shadow-md border-l-4 border-purple-500" },
+            React.createElement('div', { className: "flex items-center justify-between" },
+              React.createElement('div', {},
+                React.createElement('p', { className: "text-gray-600 text-sm" }, "Con Relazione"),
+                React.createElement('p', { className: "text-2xl font-bold text-gray-800" }, 
+                  activities.filter(a => a.routeReport).length
+                )
+              ),
+              React.createElement(FileText, { className: "text-purple-500", size: 32 })
+            )
+          )
+        ),
+
+        React.createElement('div', { className: "bg-white rounded-lg shadow-md p-6" },
+          React.createElement('div', { className: "flex justify-between items-center mb-4" },
+            React.createElement('h2', { className: "text-xl font-bold text-gray-800" }, "Attività Recenti"),
+            React.createElement('button', { 
+              onClick: () => setCurrentView('activities'),
+              className: "text-blue-600 hover:text-blue-800 font-medium"
+            }, "Vedi tutte")
+          ),
+          React.createElement('div', { className: "space-y-4" },
+            activities.slice(0, 3).map(activity =>
+              React.createElement('div', { 
+                key: activity.id, 
+                className: "flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer",
+                onClick: () => setSelectedActivity(activity)
+              },
+                React.createElement('div', { className: "flex items-center space-x-4" },
+                  React.createElement('div', { className: "w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center" },
+                    React.createElement(Mountain, { className: "text-blue-600", size: 20 })
+                  ),
+                  React.createElement('div', {},
+                    React.createElement('h3', { className: "font-semibold text-gray-800" }, activity.title || activity.mountain),
+                    React.createElement('p', { className: "text-sm text-gray-600" }, `${activity.route} • ${activity.date}`)
+                  )
+                ),
+                React.createElement('div', { className: "flex items-center space-x-3" },
+                  React.createElement('div', { className: "text-right" },
+                    React.createElement('div', { className: "flex items-center space-x-1" },
+                      [...Array(5)].map((_, i) =>
+                        React.createElement(Star, { 
+                          key: i, 
+                          size: 14, 
+                          className: i < activity.rating ? 'text-yellow-400 fill-current' : 'text-gray-300' 
+                        })
+                      )
+                    ),
+                    React.createElement('p', { className: "text-sm text-gray-600" }, activity.difficulty)
+                  ),
+                  React.createElement('button', { 
+                    onClick: (e) => {
+                      e.stopPropagation();
+                      setShareActivity(activity);
+                      setShowShareModal(true);
+                    },
+                    className: "bg-blue-100 text-blue-700 p-2 rounded-md hover:bg-blue-200 transition-colors"
+                  }, React.createElement(Share, { size: 16 }))
+                )
+              )
+            ),
+            activities.length === 0 && React.createElement('div', { className: "text-center py-8 text-gray-500" },
+              React.createElement(Mountain, { className: "mx-auto mb-4 text-gray-300", size: 48 }),
+              React.createElement('h3', { className: "text-lg font-semibold mb-2" }, "Nessuna attività registrata"),
+              React.createElement('p', { className: "mb-4" }, "Inizia a documentare le tue avventure in montagna!"),
+              React.createElement('button', { 
+                onClick: () => setShowAddForm(true),
+                className: "bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
+              }, "Aggiungi Prima Attività")
+            )
+          )
+        )
+      );
+
+      return React.createElement('div', { className: "min-h-screen bg-gray-50" },
+        React.createElement(Navigation),
+        React.createElement('main', { className: "max-w-7xl mx-auto px-4 py-8 pb-16" },
+          currentView === 'dashboard' && React.createElement(Dashboard),
+          currentView === 'activities' && React.createElement('div', { className: "text-center py-8" },
+            React.createElement('h1', { className: "text-2xl font-bold mb-4" }, "Lista Attività"),
+            React.createElement('p', { className: "text-gray-600" }, "Funzionalità in sviluppo")
+          ),
+          currentView === 'shared' && selectedActivity && React.createElement('div', { className: "bg-blue-50 rounded-lg p-6" },
+            React.createElement('h2', { className: "text-xl font-bold text-blue-800 mb-4" }, "Attività Condivisa"),
+            React.createElement('h3', { className: "text-lg font-semibold" }, selectedActivity.title),
+            React.createElement('p', {}, `${selectedActivity.mountain} - ${selectedActivity.route}`),
+            React.createElement('p', { className: "mt-4" }, selectedActivity.routeReport)
+          )
+        ),
+        showShareModal && React.createElement(ShareModal)
+      );
+    };
+
+    // Render the app
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(AlpineLog));
+  </script>
+</body>
+</html>
